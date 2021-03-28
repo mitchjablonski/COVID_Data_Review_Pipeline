@@ -6,11 +6,12 @@ config = configparser.ConfigParser()
 config.read('dwh.cfg')
 
 IAM_ROLE = config['IAM_ROLE']['ARN']
-LOG_DATA = config['S3']['LOG_DATA']
+COVID_TWEETS = config['S3']['COVID_TWEETS']
 VAC_TWEETS = config['S3']['VAC_TWEETS']
 VAC_RESPONSE = config['S3']['VAC_RESPONSE']
 VAC_SYMPTOMS = config['S3']['VAC_SYMPTOMS']
 VAC_TYPE = config['S3']['VAC_TYPE']
+ARTICLE_DATA = config['S3']['ARTICLE_DATA']
 
 # DROP TABLES
 
@@ -29,6 +30,7 @@ vaccine_response_data_drop = "DROP TABLE IF EXISTS vaccine_response_data"
 vaccine_symptom_data_drop = "DROP TABLE IF EXISTS vaccine_symptom_data"
 
 time_table_drop = "DROP TABLE IF EXISTS time_table"
+
 
 # CREATE TABLES
 
@@ -66,8 +68,8 @@ staging_covid_vaccine_tweets_create = ("""CREATE  TABLE IF NOT EXISTS staging_co
                                 text TEXT,
                                 hashtags TEXT,
                                 source TEXT,
-                                is_retweet BOOL)
-""")
+                                is_retweet BOOLEAN)
+""")          
 
 staging_covid_tweets_create = ("""CREATE  TABLE IF NOT EXISTS staging_covid_tweets(
                                 user_name TEXT,
@@ -84,8 +86,7 @@ staging_covid_tweets_create = ("""CREATE  TABLE IF NOT EXISTS staging_covid_twee
                                 is_retweet BOOL)
 """)
 
-
-covid_vaccine_tweets_create = ("""CREATE  TABLE IF NOT EXISTS staging_covid_vaccine_tweets(
+covid_vaccine_tweets_create = ("""CREATE  TABLE IF NOT EXISTS covid_vaccine_tweets(
                                 id SERIAL PRIMARY KEY,
                                 user_name TEXT,
                                 user_location TEXT,
@@ -101,23 +102,13 @@ covid_tweets_create = ("""CREATE  TABLE IF NOT EXISTS covid_tweets(
                                 text TEXT)
 """)
 
-covid_tweets_create = ("""CREATE  TABLE IF NOT EXISTS covid_vaccine_tweets(
-                                id SERIAL PRIMARY KEY,
-                                user_name TEXT,
-                                user_location TEXT,
-                                date TEXT,
-                                text TEXT)
-""")
-
-
-covid_article_data_create = ("""CREATE TABLE IF NOT EXISTS staging_covid_article_data(
+covid_article_data_create = ("""CREATE TABLE IF NOT EXISTS covid_article_data(
                                 cord_uid TEXT PRIMARY KEY,
                                 title TEXT,
                                 abstract TEXT,
                                 publish_time TEXT,
                                 authors TEXT)
 """)
-
 
 vaccine_data_create = ("""CREATE TABLE IF NOT EXISTS vaccine_data(
                                 VAERS_ID TEXT PRIMARY KEY,
@@ -156,8 +147,7 @@ vaccine_data_create = ("""CREATE TABLE IF NOT EXISTS vaccine_data(
                                 ALLERGIES TEXT)
 """)
 
-
-vaccine_response_data_create = ("""CREATE TABLE IF NOT EXISTS vaccine_response_data(
+vaccine_symptom_data_create = ("""CREATE TABLE IF NOT EXISTS vaccine_symptom_data(
                                 VAERS_ID TEXT PRIMARY KEY,
                                 SYMPTOM1 TEXT,
                                 SYMPTOMVERSION1 FLOAT,
@@ -171,7 +161,7 @@ vaccine_response_data_create = ("""CREATE TABLE IF NOT EXISTS vaccine_response_d
                                 SYMPTOMVERSION5 FLOAT)
 """)
 
-vaccine_response_data_create = ("""CREATE TABLE IF NOT EXISTS vaccine_response_data(
+vaccine_manu_data_create = ("""CREATE TABLE IF NOT EXISTS vaccine_manu_data(
                                 VAERS_ID TEXT PRIMARY KEY,
                                 VAX_TYPE TEXT,
                                 VAX_MANU TEXT,
@@ -230,56 +220,61 @@ time_table_create = ("""CREATE TABLE IF NOT EXISTS time(
 
 # POPULATE STAGING TABLES
 
-staging_events_copy = (f"""copy staging_events from {LOG_DATA}
+article_copy = (f"""copy staging_covid_article_data from {ARTICLE_DATA}
                           credentials 'aws_iam_role={IAM_ROLE}'
                           DELIMITER ','
                           CSV HEADER""")
 
-staging_songs_copy = (f"""copy staging_songs from {SONG_DATA} 
+vac_tweet_copy = (f"""copy staging_covid_vaccine_tweets from {VAC_TWEETS}
                           credentials 'aws_iam_role={IAM_ROLE}'
-                          json 'auto'
-                          """)
+                          DELIMITER ','
+                          CSV HEADER""")
 
+covid_tweet_copy = (f"""copy staging_covid_tweets from {COVID_TWEETS}
+                          credentials 'aws_iam_role={IAM_ROLE}'
+                          DELIMITER ','
+                          CSV HEADER""")
+
+
+vaccine_data_copy = (f"""copy vaccine_data from {VAC_RESPONSE}
+                          credentials 'aws_iam_role={IAM_ROLE}'
+                          DELIMITER ','
+                          CSV HEADER""")
+
+
+vaccine_manu_copy = (f"""copy vaccine_manu_data from {VAC_RESPONSE}
+                          credentials 'aws_iam_role={VAC_TYPE}'
+                          DELIMITER ','
+                          CSV HEADER""")
+
+
+vaccine_symptom_copy = (f"""copy vaccine_symptom_data from {VAC_SYMPTOMS}
+                          credentials 'aws_iam_role={IAM_ROLE}'
+                          DELIMITER ','
+                          CSV HEADER""")
 
 # POPULATE FINAL TABLES
-songplay_table_insert = ("""INSERT INTO songplay(start_time, user_id, level, song_id, artist_id, session_id, location, user_agent)
-                            SELECT timestamp 'epoch' + ts * interval '1 second' AS start_time, user_id, level, song_id, artist_id, session_id, location, user_agent
-                            FROM staging_events se
-                            JOIN staging_songs ss ON ((se.artist = ss.artist_name) and (se.song = ss.title) and (se.length=ss.duration))
-                            WHERE se.page = 'NextSong'
+
+covid_tweet_insert = ("""INSERT INTO covid_tweets(user_name, user_location, date, text)
+                            SELECT user_name, user_location, date, text
+                            FROM staging_covid_vaccine_tweets
 """)
 
-user_table_insert = ("""INSERT INTO users(user_id, first_name, last_name, gender, level)
-                        SELECT DISTINCT user_id, first_name, last_name, gender, level
-                        FROM staging_events
-                        WHERE user_id IS NOT NULL and
-                        page = 'NextSong'
+covid_vac_tweet_insert = ("""INSERT INTO covid_vaccine_tweets(user_name, user_location, date, text)
+                            SELECT user_name, user_location, date, text
+                            FROM staging_covid_vaccine_tweets
 """)
 
-song_table_insert = ("""INSERT INTO songs(song_id, title, artist_id, year, duration)
-                        SELECT song_id, title, artist_id, year, duration
-                        FROM staging_songs
-                        WHERE song_id IS NOT NULL
-""")
-
-artist_table_insert = ("""INSERT INTO artist(artist_id, name, location, latitude, longitude)
-                          SELECT artist_id, artist_name as name, artist_location as location, artist_latitude as latitude, artist_longitude as longitude
-                          FROM staging_songs
-                          WHERE artist_id IS NOT NULL
-""")
-
-time_table_insert = ("""INSERT INTO time(start_time, hour, day, week, month, year, weekDay)
-                        SELECT timestamp 'epoch' + ts * interval '1 second' AS start_time, extract(hour from start_time), 
-                        extract(day from start_time), extract(week from start_time), extract(month from start_time), 
-                        extract(year from start_time), extract(dayofweek from start_time)
-                        FROM staging_events
-                        WHERE start_time IS NOT NULL and
-                        page = 'NextSong'
+article_insert = ("""INSERT INTO users(cord_uid, title, abstract, publish_time, authors)
+                        SELECT cord_uid, title, abstract, publish_time, authors
+                        FROM staging_covid_article_data
 """)
 
 # QUERY LISTS
 
-create_table_queries = [staging_events_table_create, staging_songs_table_create, songplay_table_create, user_table_create, song_table_create, artist_table_create, time_table_create]
-drop_table_queries = [staging_events_table_drop, staging_songs_table_drop, songplay_table_drop, user_table_drop, song_table_drop, artist_table_drop, time_table_drop]
-copy_table_queries = [staging_events_copy, staging_songs_copy]
-insert_table_queries = [songplay_table_insert, user_table_insert, song_table_insert, artist_table_insert, time_table_insert]
+drop_table_queries = [staging_covid_tweets_drop, covid_tweets_drop, staging_covid_vaccine_tweets_drop, covid_vaccine_tweets_drop,
+               staging_covid_article_data_drop, covid_article_data_drop, vaccine_data_drop, vaccine_response_data_drop, vaccine_symptom_data_drop]
+create_table_queries = [staging_covid_article_data_create, staging_covid_vaccine_tweets_create, staging_covid_tweets_create, covid_vaccine_tweets_create,
+               covid_tweets_create, covid_article_data_create, vaccine_data_create, vaccine_symptom_data_create, vaccine_manu_data_create]
+copy_table_queries = [article_copy, vac_tweet_copy, vaccine_data_copy, vaccine_manu_copy, vaccine_symptom_copy]
+insert_table_queries = [covid_tweet_insert, covid_vac_tweet_insert, article_insert]
