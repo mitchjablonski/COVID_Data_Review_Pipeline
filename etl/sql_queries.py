@@ -3,7 +3,7 @@ import configparser
 
 # CONFIG
 config = configparser.ConfigParser()
-config.read('dwh.cfg')
+config.read('../../covid_pipeline.cfg')
 
 IAM_ROLE = config['IAM_ROLE']['ARN']
 COVID_TWEETS = config['S3']['COVID_TWEETS']
@@ -232,8 +232,7 @@ vac_tweet_copy = (f"""copy staging_covid_vaccine_tweets from {VAC_TWEETS}
 
 covid_tweet_copy = (f"""copy staging_covid_tweets from {COVID_TWEETS}
                           credentials 'aws_iam_role={IAM_ROLE}'
-                          DELIMITER ','
-                          CSV HEADER""")
+                          json 'auto'""")
 
 
 vaccine_data_copy = (f"""copy vaccine_data from {VAC_RESPONSE}

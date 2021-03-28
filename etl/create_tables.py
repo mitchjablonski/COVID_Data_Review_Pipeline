@@ -26,7 +26,7 @@ def main():
     Our main function for creating tables, we parse the config, connect to the database, and then drop/recreate the tables.
     '''
     config = configparser.ConfigParser()
-    config.read('dwh.cfg')
+    config.read('../../covid_pipeline.cfg')
 
     conn = psycopg2.connect("host={} dbname={} user={} password={} port={}".format(*config['CLUSTER'].values()))
     cur = conn.cursor()

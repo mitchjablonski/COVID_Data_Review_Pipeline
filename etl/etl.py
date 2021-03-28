@@ -29,7 +29,7 @@ def main():
     load our data with a copy, then insert it into the other tables
     '''
     config = configparser.ConfigParser()
-    config.read('dwh.cfg')
+    config.read('../../covid_pipeline.cfg')
 
     conn = psycopg2.connect("host={} dbname={} user={} password={} port={}".format(*config['CLUSTER'].values()))
     cur = conn.cursor()
