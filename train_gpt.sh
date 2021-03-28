@@ -1,0 +1,1 @@
+!python clm_42.py --model_name_or_path gpt2 --train_file ../COVID_data/processed_data/processed_article_data/gpt_format_text.csv --do_train --output_dir ../COVID_data/models
