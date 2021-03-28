@@ -160,7 +160,7 @@ class ModelHandler():
                  fp_16: bool = True):
         assert(model_type in MODEL_CLASSES.keys())
         self.model_type = model_type
-        self.model_path = model_path
+        self.model_name_or_path = model_path
         self.length = length
         self.stop_token = stop_token
         self.temperature = temperature
@@ -172,17 +172,18 @@ class ModelHandler():
         self.seed = seed
         self.no_cuda = no_cuda
         self.num_return_sequences = num_return_sequences
+        self.fp16 =fp_16
 
-        device = torch.device("cuda" if torch.cuda.is_available() and not self.no_cuda else "cpu")
+        self.device = torch.device("cuda" if torch.cuda.is_available() and not self.no_cuda else "cpu")
         n_gpu = 0 if self.no_cuda else torch.cuda.device_count()
 
         logger.warning(
             "device: %s, n_gpu: %s, 16-bits training: %s",
-            device,
+            self.device,
             n_gpu,
             self.fp16,
         )
-        set_seed(self.seed, n_gpu):
+        set_seed(self.seed, n_gpu)
 
         # Initialize the model and tokenizer
         try:
@@ -193,12 +194,13 @@ class ModelHandler():
 
         tokenizer = tokenizer_class.from_pretrained(self.model_name_or_path)
         model = model_class.from_pretrained(self.model_name_or_path)
-        model.to(device)
+        model.to(self.device)
 
         if self.fp16:
             model.half()
 
         self.model = model
+        self.tokenizer = tokenizer
 
         length = adjust_length_to_model(self.length, max_sequence_length=model.config.max_position_embeddings)
         logger.info(length)
@@ -206,7 +208,7 @@ class ModelHandler():
     def text_generation(self, prompt: str):
 
         prefix = self.prefix
-        encoded_prompt = tokenizer.encode(prefix + prompt_text, add_special_tokens=False, return_tensors="pt")
+        encoded_prompt = self.tokenizer.encode(prefix + prompt, add_special_tokens=False, return_tensors="pt")
         encoded_prompt = encoded_prompt.to(self.device)
 
         if encoded_prompt.size()[-1] == 0:
@@ -236,14 +238,14 @@ class ModelHandler():
             generated_sequence = generated_sequence.tolist()
 
             # Decode text
-            text = tokenizer.decode(generated_sequence, clean_up_tokenization_spaces=True)
+            text = self.tokenizer.decode(generated_sequence, clean_up_tokenization_spaces=True)
 
             # Remove all text after the stop token
             text = text[: text.find(self.stop_token) if self.stop_token else None]
 
             # Add the prompt at the beginning of the sequence. Remove the excess text that was used for pre-processing
             total_sequence = (
-                prompt_text + text[len(tokenizer.decode(encoded_prompt[0], clean_up_tokenization_spaces=True)) :]
+                prompt + text[len(self.tokenizer.decode(encoded_prompt[0], clean_up_tokenization_spaces=True)) :]
             )
 
             generated_sequences.append(total_sequence)
