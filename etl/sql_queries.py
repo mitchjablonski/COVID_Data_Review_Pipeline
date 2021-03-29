@@ -38,12 +38,12 @@ staging_covid_article_data_create = ("""CREATE TABLE IF NOT EXISTS staging_covid
                                 cord_uid TEXT,
                                 sha TEXT,
                                 source_x TEXT,
-                                title TEXT,
+                                title varchar(65534),
                                 doi TEXT,
                                 pmcid TEXT,
                                 pubmed_id TEXT,
                                 license TEXT,
-                                abstract TEXT,
+                                abstract varchar(65534),
                                 publish_time TEXT,
                                 authors TEXT,
                                 jounal TEXT,
@@ -53,7 +53,7 @@ staging_covid_article_data_create = ("""CREATE TABLE IF NOT EXISTS staging_covid
                                 pdf_json_files TEXT,
                                 pmc_json_files TEXT,
                                 url TEXT,            
-                                s2_id TEXT )
+                                s2_id TEXT)
 """)
 
 staging_covid_vaccine_tweets_create = ("""CREATE  TABLE IF NOT EXISTS staging_covid_vaccine_tweets(
@@ -65,7 +65,7 @@ staging_covid_vaccine_tweets_create = ("""CREATE  TABLE IF NOT EXISTS staging_co
                                 user_favourites TEXT,
                                 user_verified TEXT,
                                 date TEXT,
-                                text TEXT,
+                                text varchar(65534),
                                 hashtags TEXT,
                                 source TEXT,
                                 is_retweet BOOLEAN)
@@ -80,32 +80,32 @@ staging_covid_tweets_create = ("""CREATE  TABLE IF NOT EXISTS staging_covid_twee
                                 user_favourites TEXT,
                                 user_verified TEXT,
                                 date TEXT,
-                                text TEXT,
+                                text varchar(65534),
                                 hashtags TEXT,
                                 source TEXT,
                                 is_retweet BOOL)
 """)
 
 covid_vaccine_tweets_create = ("""CREATE  TABLE IF NOT EXISTS covid_vaccine_tweets(
-                                id SERIAL PRIMARY KEY,
+                                id INT IDENTITY(1, 1) PRIMARY KEY,
                                 user_name TEXT,
                                 user_location TEXT,
                                 date TEXT,
-                                text TEXT)
+                                text varchar(65534))
 """)
 
 covid_tweets_create = ("""CREATE  TABLE IF NOT EXISTS covid_tweets(
-                                id SERIAL PRIMARY KEY,
+                                id INT IDENTITY(1, 1) PRIMARY KEY,
                                 user_name TEXT,
                                 user_location TEXT,
                                 date TEXT,
-                                text TEXT)
+                                text varchar(65534))
 """)
 
 covid_article_data_create = ("""CREATE TABLE IF NOT EXISTS covid_article_data(
                                 cord_uid TEXT PRIMARY KEY,
-                                title TEXT,
-                                abstract TEXT,
+                                title varchar(65534),
+                                abstract varchar(65534),
                                 publish_time TEXT,
                                 authors TEXT)
 """)
@@ -118,7 +118,7 @@ vaccine_data_create = ("""CREATE TABLE IF NOT EXISTS vaccine_data(
                                 CAGE_MO TEXT,
                                 SEX TEXT,
                                 RPT_DATE TEXT,
-                                SYMPTOM_TEXT TEXT,
+                                SYMPTOM_TEXT varchar(65534),
                                 DIED TEXT,
                                 DATEDIED TEXT,
                                 L_THREAT TEXT,
@@ -126,7 +126,7 @@ vaccine_data_create = ("""CREATE TABLE IF NOT EXISTS vaccine_data(
                                 HOSPITAL TEXT,
                                 HOSPDAYS TEXT,
                                 X_STAY TEXT,
-                                DISABLE TEXT,
+                                DISABLE_col TEXT,
                                 RECOVD TEXT,
                                 VAX_DAT TEXT,
                                 ONSET_DATE TEXT,
@@ -172,41 +172,7 @@ vaccine_manu_data_create = ("""CREATE TABLE IF NOT EXISTS vaccine_manu_data(
                                 VAX_NAME TEXT)
 """)
 
-songplay_table_create = ("""CREATE TABLE IF NOT EXISTS songplay(
-                            songplay_id INT IDENTITY(0,1) PRIMARY KEY,
-                            start_time TIMESTAMP NOT NULL,
-                            user_id INTEGER NOT NULL,
-                            level TEXT,
-                            song_id TEXT,
-                            artist_id TEXT,
-                            session_id INTEGER,
-                            location TEXT,
-                            user_agent TEXT)
-""")
 
-user_table_create = ("""CREATE TABLE IF NOT EXISTS users(
-                        user_id INTEGER PRIMARY KEY,
-                        first_name TEXT NOT NULL,
-                        last_name TEXT NOT NULL,
-                        gender TEXT,
-                        level TEXT)
-""")
-
-song_table_create = ("""CREATE TABLE IF NOT EXISTS songs(
-                        song_id TEXT PRIMARY KEY,
-                        title TEXT,
-                        artist_id TEXT,
-                        year INTEGER,
-                        duration NUMERIC)
-""")
-
-artist_table_create = ("""CREATE TABLE IF NOT EXISTS artist(
-                          artist_id TEXT PRIMARY KEY,
-                          name TEXT,
-                          location TEXT,
-                          latitude NUMERIC,
-                          longitude NUMERIC)
-""")
 
 time_table_create = ("""CREATE TABLE IF NOT EXISTS time(
                         start_time TIMESTAMP PRIMARY KEY,
@@ -222,41 +188,36 @@ time_table_create = ("""CREATE TABLE IF NOT EXISTS time(
 
 article_copy = (f"""copy staging_covid_article_data from {ARTICLE_DATA}
                           credentials 'aws_iam_role={IAM_ROLE}'
-                          DELIMITER ','
-                          CSV HEADER""")
+                          FORMAT AS CSV;""")
 
 vac_tweet_copy = (f"""copy staging_covid_vaccine_tweets from {VAC_TWEETS}
                           credentials 'aws_iam_role={IAM_ROLE}'
-                          DELIMITER ','
-                          CSV HEADER""")
+                          FORMAT AS CSV;""")
 
 covid_tweet_copy = (f"""copy staging_covid_tweets from {COVID_TWEETS}
                           credentials 'aws_iam_role={IAM_ROLE}'
-                          json 'auto'""")
+                          json 'auto';""")
 
 
 vaccine_data_copy = (f"""copy vaccine_data from {VAC_RESPONSE}
                           credentials 'aws_iam_role={IAM_ROLE}'
-                          DELIMITER ','
-                          CSV HEADER""")
+                          FORMAT AS CSV;""")
 
 
 vaccine_manu_copy = (f"""copy vaccine_manu_data from {VAC_RESPONSE}
                           credentials 'aws_iam_role={VAC_TYPE}'
-                          DELIMITER ','
-                          CSV HEADER""")
+                          FORMAT AS CSV;""")
 
 
 vaccine_symptom_copy = (f"""copy vaccine_symptom_data from {VAC_SYMPTOMS}
                           credentials 'aws_iam_role={IAM_ROLE}'
-                          DELIMITER ','
-                          CSV HEADER""")
+                          FORMAT AS CSV;""")
 
 # POPULATE FINAL TABLES
 
 covid_tweet_insert = ("""INSERT INTO covid_tweets(user_name, user_location, date, text)
                             SELECT user_name, user_location, date, text
-                            FROM staging_covid_vaccine_tweets
+                            FROM staging_covid_tweets
 """)
 
 covid_vac_tweet_insert = ("""INSERT INTO covid_vaccine_tweets(user_name, user_location, date, text)
@@ -275,5 +236,5 @@ drop_table_queries = [staging_covid_tweets_drop, covid_tweets_drop, staging_covi
                staging_covid_article_data_drop, covid_article_data_drop, vaccine_data_drop, vaccine_response_data_drop, vaccine_symptom_data_drop]
 create_table_queries = [staging_covid_article_data_create, staging_covid_vaccine_tweets_create, staging_covid_tweets_create, covid_vaccine_tweets_create,
                covid_tweets_create, covid_article_data_create, vaccine_data_create, vaccine_symptom_data_create, vaccine_manu_data_create]
-copy_table_queries = [article_copy, vac_tweet_copy, vaccine_data_copy, vaccine_manu_copy, vaccine_symptom_copy]
+copy_table_queries = [vaccine_data_copy, article_copy, vaccine_manu_copy, vaccine_symptom_copy, vac_tweet_copy, covid_tweet_copy]
 insert_table_queries = [covid_tweet_insert, covid_vac_tweet_insert, article_insert]

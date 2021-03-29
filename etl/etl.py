@@ -9,6 +9,7 @@ def load_staging_tables(cur, conn):
     into our redshift cluster here
     '''
     for query in copy_table_queries:
+        print(query)
         cur.execute(query)
         conn.commit()
 
