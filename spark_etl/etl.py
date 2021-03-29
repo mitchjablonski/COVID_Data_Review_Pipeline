@@ -1,4 +1,3 @@
-import configparser
 from datetime import datetime
 import os
 from pyspark.sql import SparkSession
@@ -7,7 +6,7 @@ from pyspark.sql.functions import year, month, dayofmonth, hour, weekofyear, dat
 from pyspark.sql.types import TimestampType
 import posixpath
 
-
+import configparser
 config = configparser.ConfigParser()
 config.read('covid_pipeline.cfg')
 
@@ -38,23 +37,23 @@ def process_tweet_data(spark, input_data, output_data):
     df = spark.read.json(covid_data)
     
     # extract columns to create covid tweet table
-    tweet_table = df.select('user_name', 'user_location', 'date', 'text').filter(col('text').isNotNull()).drop_duplicates()
+    tweet_table = df.select('id_str', 'created_at', 'text').filter(col('text').isNotNull()).drop_duplicates()
     tweet_table = tweet_table.withColumn('tweet_id', monotonically_increasing_id())
     
     # write songs table to parquet files partitioned by year and artist
-    tweet_table.write.parquet(posixpath.join(output_data, "covid_tweets/"), mode="overwrite", partitionBy=["date"])
+    tweet_table.write.parquet(posixpath.join(output_data, "covid_tweets/"), mode="overwrite")
 
 
     # get filepath to covid vaccine tweet data file
     vac_data = posixpath.join(input_data, 'vaccine_tweets/covidvaccine_tweets.csv')
-    df = spark.read.csv(vac_data)
+    df = spark.read.option("header","true").csv(vac_data)
     
     # extract columns to create covid vaccome tweet table
     tweet_table = df.select('user_name', 'user_location', 'date', 'text').filter(col('text').isNotNull()).drop_duplicates()
     tweet_table = tweet_table.withColumn('tweet_id', monotonically_increasing_id())
     
     # write songs table to parquet files partitioned by year and artist
-    tweet_table.write.parquet(posixpath.join(output_data, "covid_vac_tweets/"), mode="overwrite", partitionBy=["date"])
+    tweet_table.write.parquet(posixpath.join(output_data, "covid_vac_tweets/"), mode="overwrite")
 
 
 def process_vaccine_response_data(spark, input_data, output_data):
@@ -68,12 +67,12 @@ def process_vaccine_response_data(spark, input_data, output_data):
     vaers_response =posixpath.join(input_data, 'vaccine_response_data/2021VAERSDATA.csv')
 
     # read log data file
-    df = spark.read.csv(vaers_response)
+    df = spark.read.option("header","true").csv(vaers_response)
     
     # extract columns for users table    
     vares_response_table = df.select(col("VAERS_ID"), col("STATE"), 
                             col("AGE_YRS"),col("RPT_DATE"),col("SYMPTOM_TEXT"),
-                            col("VAX_DATE")).filter(col('userId').isNotNull()).drop_duplicates()
+                            col("VAX_DATE")).drop_duplicates()
     
     # write users table to parquet files
     vares_response_table.write.parquet(posixpath.join(output_data, "vaers_response/"), mode="overwrite")
@@ -82,7 +81,7 @@ def process_vaccine_response_data(spark, input_data, output_data):
     vaers_symptoms =posixpath.join(input_data, 'vaccine_response_data/2021VAERSSYMPTOMS.csv')
 
     # read log data file
-    df = spark.read.csv(vaers_symptoms)
+    df = spark.read.option("header","true").csv(vaers_symptoms)
     
     # extract columns for users table    
     vaers_symptoms_table = df.select(col("VAERS_ID"), col("SYMPTOM1"), 
@@ -96,7 +95,7 @@ def process_vaccine_response_data(spark, input_data, output_data):
 
     vaers_vax =posixpath.join(input_data, 'vaccine_response_data/2021VAERSVAX.csv')
     # read log data file
-    df = spark.read.csv(vaers_vax)
+    df = spark.read.option("header","true").csv(vaers_vax)
     
     # extract columns for users table    
     vaers_vax_table = df.select(col("VAERS_ID"), col("VAX_TYPE"), 
@@ -112,7 +111,7 @@ def process_article_data(spark, input_data, output_data):
     article_data =posixpath.join(input_data, 'article_metadata/metadata.csv')
 
     # read log data file
-    df = spark.read.csv(article_data)
+    df = spark.read.option("header","true").csv(article_data)
     # extract columns for users table    
     vaers_symptoms_table = df.select(col("cord_uid"), col("title"), 
                             col("abstract"),col("authors"),col("publish_time"),
